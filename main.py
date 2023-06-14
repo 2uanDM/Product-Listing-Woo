@@ -80,5 +80,5 @@ test = API_key(
     ]
 )
 
-test.create()
-print(test)
+# test.create()
+# test.delete()
