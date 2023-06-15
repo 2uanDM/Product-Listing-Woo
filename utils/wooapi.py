@@ -1,12 +1,12 @@
 import requests
 from bs4 import BeautifulSoup
 import json
-import urllib.parse
+from woocommerce import API
 
 
 class APIKey(object):
-    def __init__(self, url: str, cookies: list) -> None:
-        self.url = url
+    def __init__(self, domain: str, cookies: list) -> None:
+        self.domain = domain
         self.cookies = cookies
         self.__revoke_url = ''
         self.__consumer_key = ''
@@ -38,11 +38,11 @@ class APIKey(object):
 
     def __security_key(self) -> str:
         # Request url
-        url = f'https://{self.url}/wp-admin/admin.php?page=wc-settings&tab=advanced&section=keys&create-key=1'
+        url = f'https://{self.domain}/wp-admin/admin.php?page=wc-settings&tab=advanced&section=keys&create-key=1'
 
         # Request headers
         headers = {
-            'authority': self.url,
+            'authority': self.domain,
             'accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
             'accept-language': 'vi,en-US;q=0.9,en;q=0.8,vi-VN;q=0.7',
             'cache-control': 'no-cache',
@@ -85,18 +85,18 @@ class APIKey(object):
 
     def create(self) -> None:
         # Request url
-        url = f'https://{self.url}/wp-admin/admin-ajax.php'
+        url = f'https://{self.domain}/wp-admin/admin-ajax.php'
 
         # Request headers
         headers = {
-            'authority': self.url,
+            'authority': self.domain,
             'accept': 'application/json, text/javascript, */*; q=0.01',
             'accept-language': 'vi,en-US;q=0.9,en;q=0.8,vi-VN;q=0.7',
             'cache-control': 'no-cache',
             'content-type': 'application/x-www-form-urlencoded; charset=UTF-8',
-            'origin': f'https://{self.url}',
+            'origin': f'https://{self.domain}',
             'pragma': 'no-cache',
-            'referer': f'https://{self.url}/wp-admin/admin.php?page=wc-settings&tab=advanced&section=keys&create-key=1',
+            'referer': f'https://{self.domain}/wp-admin/admin.php?page=wc-settings&tab=advanced&section=keys&create-key=1',
             'sec-ch-ua': '"Not.A/Brand";v="8", "Chromium";v="114", "Google Chrome";v="114"',
             'sec-ch-ua-mobile': '?0',
             'sec-ch-ua-platform': '"Windows"',
@@ -145,7 +145,7 @@ class APIKey(object):
         url = self.__revoke_url
         payload = {}
         headers = {
-            'authority': self.url,
+            'authority': self.domain,
             'accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
             'accept-language': 'vi,en-US;q=0.9,en;q=0.8,vi-VN;q=0.7',
             'cache-control': 'no-cache',
@@ -176,3 +176,39 @@ class APIKey(object):
             print('Xóa WooCommerce API key thành công')
         else:
             print('Xóa WooCommerce API key thất bại')
+
+def upload_product(domain: str, cookies: list, data: dict) -> None:
+    wcapi_key = APIKey(
+        domain=domain,
+        cookies=cookies,
+        data=data
+    )
+
+    # Create a new api key
+    try:
+        wcapi_key.create()
+        print('Tạo API Key thành công')
+    except Exception as e:
+        print(f'Tạo API Key thất bại: {e}')
+        return
+        
+    # Create woocommerce API object
+    wcapi = API(
+        url=f'https://{domain}',
+        consumer_key=wcapi_key.get_consumer_key(),
+        consumer_secret=wcapi_key.get_consumer_secret(),
+        wp_api=True,
+        version="wc/v3"
+    )
+
+    # Upload the product
+    print('Đang upload product ...')
+    wcapi.post("products", data)
+    
+    # Remove the API key
+    try:
+        wcapi_key.delete()
+        print('Xóa API Key thành công')
+    except Exception as e:
+        print(f'Xoá API Key thất bại: {e}')
+        return
