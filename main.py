@@ -1,6 +1,6 @@
-from utils.woocommerce import API_key
+from utils.woocommerce import APIKey
 
-test = API_key(
+test = APIKey(
     url='silegend.com',
     cookies=[
         {

@@ -4,7 +4,7 @@ import json
 import urllib.parse
 
 
-class API_key(object):
+class APIKey(object):
     def __init__(self, url: str, cookies: list) -> None:
         self.url = url
         self.cookies = cookies
@@ -15,7 +15,16 @@ class API_key(object):
     def __str__(self) -> str:
         return f'The consumer key is: {self.__consumer_key}\nThe consumer secrete key is: {self.__consumer_secret}\nRevoke url: {self.__revoke_url}'
 
-    def __session(self) -> requests.Session:
+    def get_revoke_url(self):
+        return self.__revoke_url
+
+    def get_consumer_key(self):
+        return self.__consumer_key
+
+    def get_consumer_secret(self):
+        return self.__consumer_secret
+
+    def session(self) -> requests.Session:
         session = requests.Session()
 
         # Convert the cookies JSON into a dictionary
@@ -52,7 +61,7 @@ class API_key(object):
         # Request payload
         payload = {}
         try:
-            response = self.__session().request(
+            response = self.session().request(
                 method='GET',
                 url=url,
                 headers=headers,
@@ -102,7 +111,7 @@ class API_key(object):
         payload = f'action=woocommerce_update_api_key&security={self.__security_key()}&key_id=0&description=test&user=5&permissions=read_write'
 
         try:
-            response = self.__session().request(
+            response = self.session().request(
                 method='POST',
                 url=url,
                 headers=headers,
@@ -112,20 +121,25 @@ class API_key(object):
             print(e)
             return
 
-        # Get the attributes
-        index = response.text.find('"revoke_url"')
-        response_text = response.text[:index-1] + r'}}'
-        json_response = json.loads(response_text)
-        self.__consumer_key = str(json_response['data']['consumer_key'])
-        self.__consumer_secret = str(json_response['data']['consumer_secret'])
+        if response.status_code == 200:
+            # Get the attributes
+            index = response.text.find('"revoke_url"')
+            response_text = response.text[:index-1] + r'}}'
+            json_response = json.loads(response_text)
+            self.__consumer_key = str(json_response['data']['consumer_key'])
+            self.__consumer_secret = str(
+                json_response['data']['consumer_secret'])
 
-        start_revoke_url_index = response.text.find('https')
-        end_revoke_url_index = response.text.find('>Revoke key')
-        response_text = response.text[start_revoke_url_index:end_revoke_url_index-1]
-        decoded_url = response_text.replace('\\/', '/').replace('&#038;', '&')
-        self.__revoke_url = decoded_url[:-1]
+            start_revoke_url_index = response.text.find('https')
+            end_revoke_url_index = response.text.find('>Revoke key')
+            response_text = response.text[start_revoke_url_index:end_revoke_url_index-1]
+            decoded_url = response_text.replace(
+                '\\/', '/').replace('&#038;', '&')
+            self.__revoke_url = decoded_url[:-1]
 
-        print('Tạo WooCommerce API key thành công')
+            print('Tạo WooCommerce API key thành công')
+        else:
+            print('Tạo WooCommerce API key thất bại')
 
     def delete(self) -> None:
         url = self.__revoke_url
@@ -148,7 +162,7 @@ class API_key(object):
         }
 
         try:
-            response = self.__session().request(
+            response = self.session().request(
                 method='GET',
                 url=url,
                 headers=headers,
@@ -158,4 +172,7 @@ class API_key(object):
             print(e)
             return
 
-        print('Xóa WooCommerce API key thành công')
+        if response.status_code == 200:
+            print('Xóa WooCommerce API key thành công')
+        else:
+            print('Xóa WooCommerce API key thất bại')
