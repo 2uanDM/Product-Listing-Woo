@@ -4,3 +4,4 @@ python-dotenv==1.0.0
 undetected-chromedriver==2.1.1
 selenium==4.9.1
 WooCommerce==3.0.0
+pandas==2.0.2
