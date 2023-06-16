@@ -3,6 +3,12 @@ from tkinter import Tk, Canvas, Entry, Text, Button, PhotoImage, END, Scrollbar
 from utils.woo_api import upload_product
 from utils.woo_csv import export_csv
 import sys 
+import os 
+
+if sys.stdout is None:
+    sys.stdout = open(os.devnull, 'w')
+if sys.stderr is None:
+    sys.stderr = open(os.devnull, 'w')
 
 def print_to_text(*args, **kwargs):
     end = kwargs.get("end", "")
