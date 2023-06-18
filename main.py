@@ -1,14 +1,18 @@
 from pathlib import Path
 from tkinter import Tk, Canvas, Entry, Text, Button, PhotoImage, END, Scrollbar
 from utils.woo_api import upload_product
-from utils.woo_csv import export_csv
-import sys 
-import os 
+from utils.woo_csv import export_csv, merge_products_info
+import sys
+import os
+
+# Globol variable
+products = []
 
 if sys.stdout is None:
     sys.stdout = open(os.devnull, 'w')
 if sys.stderr is None:
     sys.stderr = open(os.devnull, 'w')
+
 
 def print_to_text(*args, **kwargs):
     end = kwargs.get("end", "")
@@ -16,16 +20,19 @@ def print_to_text(*args, **kwargs):
     entry_terminal.insert("end", text)
     entry_terminal.see("end")  # Scroll to the bottom
 
+
 # Redefine the print function
 sys.stdout.write = print_to_text
 sys.stderr.write = print_to_text
 
+
 def relative_to_assets(path: str) -> Path:
     return "./assets/frame0" / Path(path)
 
+
 def get_cookies_list(textbox: Text) -> list:
     values = textbox.get('1.0', 'end').strip()
-    
+
     # Change true -> True
     while True:
         occur = values.find('true')
@@ -55,20 +62,24 @@ def get_cookies_list(textbox: Text) -> list:
     except Exception as e:
         print(f'ERROR: {e}')
         return ''
-    
+
     return result
 
-def get_Text(textbox:Text) -> str:
-    return textbox.get('1.0','end').strip()
+
+def get_Text(textbox: Text) -> str:
+    return textbox.get('1.0', 'end').strip()
+
 
 def get_Entry(textbox: Entry) -> str:
     return textbox.get().strip()
 
-def get_product_data(name:str, sku:str, price:str, description:str, images:str, categories:str, tags:str) -> dict:
+
+def get_product_data(price: str, description: str, categories: str, tags: str) -> list:
+    global products
     data = {
         "type": "simple",
-        "sku": sku,
-        "name": name,
+        "sku": '',
+        "name": '',
         "status": "publish",
         "featured": False,
         "catalog_visibility": "visible",
@@ -80,35 +91,42 @@ def get_product_data(name:str, sku:str, price:str, description:str, images:str, 
         "sold_individually": False,
         "regular_price": price
     }
-    
+
     # Get the categories
     cat_list = []
     for category in categories.split(','):
         cat_list.append({
             "name": category
         })
-    
+
     data["categories"] = cat_list
-    
+
     # Get the tags
     tags_list = []
     for tag in tags.split(','):
         tags_list.append({
             "name": tag
         })
-    
+
     data["tags"] = tags_list
-    
-    # Get the images
-    meta_fifu_url = '|'.join(images.split('\n'))
-    data["meta_data"] = [
+
+    data_list = []
+    for x in products:
+        data['sku'] = x['sku']
+
+        data['name'] = x['name']
+
+        data['meta_data'] = [
             {
-                "key": "fifu_list_url",
-                "value": meta_fifu_url
+                'key': 'fifu_list_url',
+                'value': x['images_list']
             }
         ]
-    
-    return data
+
+        data_list.append(data)
+
+    return data_list
+
 
 def create_canvas(window: Tk) -> Canvas:
     # Background for the canvas
@@ -146,7 +164,7 @@ def create_canvas(window: Tk) -> Canvas:
         702.0,
         fill="#FFFFFF",
         outline="")
-    
+
     # Calculate the position of the rectangle
     x1, y1, x2, y2 = canvas.coords(terminal)
 
@@ -157,7 +175,7 @@ def create_canvas(window: Tk) -> Canvas:
     textbox_y = y1 + 5
 
     # Create the text widget
-    global entry_terminal 
+    global entry_terminal
     entry_terminal = Text(
         bd=0,
         bg="#FFFFFF",
@@ -166,25 +184,26 @@ def create_canvas(window: Tk) -> Canvas:
         font=("Courier", 16 * -1),
     )
     entry_terminal.place(
-        x=textbox_x, 
+        x=textbox_x,
         y=textbox_y,
         width=textbox_width,
         height=textbox_height
     )
-    
+
     scrollbar = Scrollbar()
     scrollbar.place(
-        x=textbox_x + textbox_width -13,
+        x=textbox_x + textbox_width - 13,
         y=textbox_y,
         height=textbox_height
     )
-    
+
     entry_terminal.config(yscrollcommand=scrollbar.set)
     scrollbar.config(command=entry_terminal.yview)
-    
+
     entry_terminal.bind("<Key>", lambda e: "break")
 
     return canvas
+
 
 def text_cookies(canvas: Canvas) -> None:
     # Text Cookies
@@ -197,6 +216,7 @@ def text_cookies(canvas: Canvas) -> None:
         font=("RobotoRoman Regular", 18 * -1)
     )
 
+
 def text_domain(canvas: Canvas) -> None:
     # Text Domain
     canvas.create_text(
@@ -208,55 +228,28 @@ def text_domain(canvas: Canvas) -> None:
         font=("RobotoRoman Regular", 18 * -1)
     )
 
+
 def text_price(canvas: Canvas) -> None:
     canvas.create_text(
-        964.0,
+        345.0,
         111.0,
         anchor="nw",
         text="Price ($)",
         fill="#000000",
         font=("RobotoRoman SemiBold", 16 * -1)
     )
-    
-def text_images(canvas: Canvas) -> None:
+
+
+def text_products(canvas: Canvas) -> None:
     canvas.create_text(
-        801.0,
+        920.0,
         204.0,
         anchor="nw",
-        text="Images (Nếu có nhiều ảnh, mỗi link ảnh trên một dòng)",
-        fill="#000000",
-        font=("RobotoRoman SemiBold", 16 * -1)
-    )
-    
-def text_images(canvas: Canvas) -> None:
-    canvas.create_text(
-        801.0,
-        204.0,
-        anchor="nw",
-        text="Images (Nếu có nhiều ảnh, mỗi link ảnh trên một dòng)",
+        text="Up link sản phẩm tại đây",
         fill="#000000",
         font=("RobotoRoman SemiBold", 16 * -1)
     )
 
-def text_sku(canvas: Canvas) -> None:
-    canvas.create_text(
-            345.0,
-            111.0,
-            anchor="nw",
-            text="SKU",
-            fill="#000000",
-            font=("RobotoRoman SemiBold", 16 * -1)
-        )
-    
-def text_name(canvas: Canvas) -> None: 
-    canvas.create_text(
-        655.0,
-        111.0,
-        anchor="nw",
-        text="Name",
-        fill="#000000",
-        font=("RobotoRoman SemiBold", 16 * -1)
-    )
 
 def test_description(canvas: Canvas) -> None:
     canvas.create_text(
@@ -268,7 +261,8 @@ def test_description(canvas: Canvas) -> None:
         font=("RobotoRoman SemiBold", 16 * -1)
     )
 
-def test_tags(canvas: Canvas) -> None: 
+
+def test_tags(canvas: Canvas) -> None:
     canvas.create_text(
         801.0,
         467.0,
@@ -277,6 +271,7 @@ def test_tags(canvas: Canvas) -> None:
         fill="#000000",
         font=("RobotoRoman SemiBold", 16 * -1)
     )
+
 
 def test_categories(canvas: Canvas) -> None:
     canvas.create_text(
@@ -288,7 +283,12 @@ def test_categories(canvas: Canvas) -> None:
         font=("RobotoRoman SemiBold", 16 * -1)
     )
 
-    
+
+def button_3_func():
+    global function
+    function = merge_products_info()
+
+
 if __name__ == '__main__':
     # Initiate
     window = Tk()
@@ -308,7 +308,7 @@ if __name__ == '__main__':
         118.0,
         image=image_image_1
     )
-    
+
     # Product 1st
     canvas.create_rectangle(
         323.0,
@@ -369,7 +369,6 @@ if __name__ == '__main__':
         64.0,
         fill="#D9D9D9",
         outline="")
-    
 
     '''
         Text Box Field
@@ -463,29 +462,29 @@ if __name__ == '__main__':
         width=241.0,
         height=32.0
     )
-    
-    # Name entry
-    entry_image_5 = PhotoImage(
-        file=relative_to_assets("entry_5.png"))
-    entry_bg_5 = canvas.create_image(
-        775.5,
+
+    # Price
+    entry_image_4 = PhotoImage(
+        file=relative_to_assets("entry_4.png"))
+    entry_bg_4 = canvas.create_image(
+        466.5,
         164.0,
-        image=entry_image_5
+        image=entry_image_4
     )
-    entry_name = Entry(
+    entry_price = Entry(
         bd=0,
         bg="#FFFFFF",
         fg="#000716",
         highlightthickness=2,
         font=("Inter Regular", 16 * -1)
     )
-    entry_name.place(
-        x=655.0,
+    entry_sku.place(
+        x=346.0,
         y=147.0,
         width=241.0,
         height=32.0
     )
-    
+
     # Description entry
     entry_image_6 = PhotoImage(
         file=relative_to_assets("entry_6.png"))
@@ -529,50 +528,6 @@ if __name__ == '__main__':
         width=403.0,
         height=32.0
     )
-    
-    # Images entry
-    entry_image_8 = PhotoImage(
-        file=relative_to_assets("entry_8.png"))
-    entry_bg_8 = canvas.create_image(
-        1003.0,
-        342.0,
-        image=entry_image_8
-    )
-    entry_images = Text(
-        bd=0,
-        bg="#FFFFFF",
-        fg="#000716",
-        highlightthickness=2,
-        font=("Inter Regular", 16 * -1)
-    )
-    entry_images.place(
-        x=801.0,
-        y=240.0,
-        width=404.0,
-        height=202.0
-    )
-
-    # Price
-    entry_image_9 = PhotoImage(
-        file=relative_to_assets("entry_9.png"))
-    entry_bg_9 = canvas.create_image(
-        1084.5,
-        164.0,
-        image=entry_image_9
-    )
-    entry_price = Entry(
-        bd=0,
-        bg="#FFFFFF",
-        fg="#000716",
-        highlightthickness=2,
-        font=("Inter Regular", 16 * -1)
-    )
-    entry_price.place(
-        x=964.0,
-        y=147.0,
-        width=241.0,
-        height=32.0
-    )
 
     '''
         Text
@@ -581,11 +536,9 @@ if __name__ == '__main__':
     text_domain(canvas)
     test_description(canvas)
     test_tags(canvas)
-    text_sku(canvas)
-    text_images(canvas)
     test_categories(canvas)
     text_price(canvas)
-    text_name(canvas)
+    text_products(canvas)
 
     '''
         Button
@@ -600,16 +553,13 @@ if __name__ == '__main__':
         highlightthickness=0,
         command=lambda: upload_product(
             entry_terminal,
-            get_Entry(entry_domain), 
+            get_Entry(entry_domain),
             get_cookies_list(entry_cookies),
             get_product_data(
-                name=get_Entry(entry_name),
-                sku=get_Entry(entry_sku),
                 price=get_Entry(entry_price),
                 description=get_Text(entry_description),
-                images=get_Text(entry_images),
                 categories=get_Entry(entry_categories),
-                tags=get_Entry(entry_tags)        
+                tags=get_Entry(entry_tags)
             )
         ),
         relief="flat"
@@ -631,13 +581,10 @@ if __name__ == '__main__':
         highlightthickness=0,
         command=lambda: export_csv(
             get_product_data(
-                name=get_Entry(entry_name),
-                sku=get_Entry(entry_sku),
                 price=get_Entry(entry_price),
                 description=get_Text(entry_description),
-                images=get_Text(entry_images),
                 categories=get_Entry(entry_categories),
-                tags=get_Entry(entry_tags)        
+                tags=get_Entry(entry_tags)
             )
         ),
         relief="flat"
@@ -648,7 +595,22 @@ if __name__ == '__main__':
         width=127.80718994140625,
         height=39.01483154296875
     )
-    
 
+    # -- Upload products file
+    button_image_3 = PhotoImage(
+        file=relative_to_assets("button_3.png"))
+    button_3 = Button(
+        image=button_image_3,
+        borderwidth=0,
+        highlightthickness=0,
+        command=lambda: button_3_func(),
+        relief="flat"
+    )
+    button_3.place(
+        x=939.0,
+        y=255.0,
+        width=127.80721282958984,
+        height=39.01483154296875
+    )
     window.resizable(False, False)
     window.mainloop()

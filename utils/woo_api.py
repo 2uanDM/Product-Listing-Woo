@@ -192,7 +192,7 @@ def check_input_format(input_string):
     else:
         return False
 
-def upload_product(text: Text, domain: str, cookies: list, data: dict) -> None:
+def upload_product(text: Text, domain: str, cookies: list, data_list: list) -> None:
     if domain == '':
         tk.showerror(
             title="Empty Domain!", message="Không được để trống domain")
@@ -232,8 +232,10 @@ def upload_product(text: Text, domain: str, cookies: list, data: dict) -> None:
     )
 
     # Upload the product
-    add_text(text, 'Đang upload product ...')
-    wcapi.post("products", data)
+    
+    for index, data in data_list:
+        add_text(text, f'Đang upload product {index}')
+        wcapi.post("products", data)
     
     # Remove the API key
     try:
