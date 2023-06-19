@@ -4,7 +4,8 @@ from bs4 import BeautifulSoup
 import json
 from woocommerce import API
 import tkinter.messagebox as tk
-from tkinter import Text, END
+from tkinter import Text, END, Tk
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 class APIKey(object):
     def __init__(self, domain: str, cookies: list) -> None:
@@ -192,7 +193,7 @@ def check_input_format(input_string):
     else:
         return False
 
-def upload_product(text: Text, domain: str, cookies: list, data_list: list) -> None:
+def upload_product(window: Tk, text: Text, domain: str, cookies: list, data_list: list) -> None:
     if domain == '':
         tk.showerror(
             title="Empty Domain!", message="Không được để trống domain")
@@ -215,6 +216,7 @@ def upload_product(text: Text, domain: str, cookies: list, data_list: list) -> N
 
     # Create a new api key
     print('Đang tạo API key ...')
+    window.update()
     try:
         wcapi_key.create()
     except Exception as e:
@@ -232,15 +234,33 @@ def upload_product(text: Text, domain: str, cookies: list, data_list: list) -> N
     )
 
     # Upload the product
-    
-    for index, data in data_list:
-        add_text(text, f'Đang upload product {index}')
-        wcapi.post("products", data)
+    error_product = []
+    with ThreadPoolExecutor(max_workers=40) as executor:
+        futures = []
+        for index, data in enumerate(data_list):
+            window.update()
+            try: 
+                add_text(text, f'Đang upload product {index}')
+                futures.append(executor.submit(wcapi.post, "products", data))
+            except Exception as e:
+                print(f'ERROR: {e}')
+                window.update()
+                error_product.append(data)
+                continue
+            
+    # for index, data in enumerate(data_list):
+    #     try:
+    #         add_text(text, f'Đang upload product {index}')
+    #         wcapi.post("products", data)
+    #     except Exception as e:
+    #         print(f'ERROR: {e}')
+            
     
     # Remove the API key
     try:
         wcapi_key.delete()
         add_text(text, 'Xóa API Key thành công ...')
+        window.update()
     except Exception as e:
         tk.showerror(
             title="Delete API Key!", message=f"Xoá API Key thất bại: {e}")
@@ -248,3 +268,5 @@ def upload_product(text: Text, domain: str, cookies: list, data_list: list) -> N
 
     tk.showinfo(
         "Success!", f"Đã upload sản phẩm thành công")
+    
+

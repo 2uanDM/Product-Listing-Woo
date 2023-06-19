@@ -7,13 +7,13 @@ import tkinter.messagebox as tk
 def export_csv(data_list: list):
     df = pd.read_csv('./assets/template_woo.csv')
 
-    row_to_append = df.loc[0]
+    row_to_append = df.iloc[0]
 
     for data in data_list:
         length = len(df)
         df.loc[length] = row_to_append
 
-        df.at[length, 'ID'] = random.randint(1e11, 1e12-1)
+        df.at[length, 'ID'] = random.randint(1e10, 1e11-1)
         df.at[length, 'SKU'] = data['sku']
         df.at[length, 'Name'] = data['name']
         df.at[length, 'Description'] = data['description']
@@ -26,11 +26,11 @@ def export_csv(data_list: list):
             tags_list = [x['name'] for x in data['tags']]
             df.at[length, 'Tags'] = ','.join(tags_list)
         if 'meta_data' in data:
-            df.at[length, 'Meta: fifu_list_url'] = data['meta_data'][length]['value']
+            df.at[length, 'Meta: fifu_list_url'] = data['meta_data'][0]['value']
 
-    # # Delete the first row and reset index
-    # df.drop(0, inplace=True)
-    # df.reset_index(drop=True, inplace=True)
+    # Delete the first row and reset index
+    df.drop(0, inplace=True)
+    df.reset_index(drop=True, inplace=True)
 
     # Open file dialog to choose save location
     file_path = filedialog.asksaveasfile(defaultextension='.csv',

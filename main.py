@@ -1,9 +1,11 @@
 from pathlib import Path
 from tkinter import Tk, Canvas, Entry, Text, Button, PhotoImage, END, Scrollbar
+import tkinter.messagebox as tk
 from utils.woo_api import upload_product
 from utils.woo_csv import export_csv, merge_products_info
 import sys
 import os
+import threading
 
 # Globol variable
 products = []
@@ -73,9 +75,7 @@ def get_Text(textbox: Text) -> str:
 def get_Entry(textbox: Entry) -> str:
     return textbox.get().strip()
 
-
-def get_product_data(price: str, description: str, categories: str, tags: str) -> list:
-    global products
+def regular_data_format(price: str, description: str, categories: str, tags: str) -> dict:
     data = {
         "type": "simple",
         "sku": '',
@@ -84,45 +84,52 @@ def get_product_data(price: str, description: str, categories: str, tags: str) -
         "featured": False,
         "catalog_visibility": "visible",
         "short_description": "",
-        "description": description,
+        "description": '',
         "tax_status": "taxable",
         "stock_status": "instock",
         "backorders": "no",
         "sold_individually": False,
-        "regular_price": price
+        "regular_price": '',
+        "categories": [],
+        "tags": [], 
+        "meta_data": [],       
     }
-
+    
     # Get the categories
     cat_list = []
     for category in categories.split(','):
-        cat_list.append({
-            "name": category
-        })
+        cat_list.append(
+            {"name": category}
+        )
 
     data["categories"] = cat_list
 
     # Get the tags
     tags_list = []
     for tag in tags.split(','):
-        tags_list.append({
-            "name": tag
-        })
+        tags_list.append(
+            {"name": tag}
+        )
 
     data["tags"] = tags_list
+    
+    return data
 
+
+def get_product_data(price: str, description: str, categories: str, tags: str) -> list:
+    global products
     data_list = []
     for x in products:
+        data = regular_data_format(price, description, categories, tags)
         data['sku'] = x['sku']
-
         data['name'] = x['name']
-
         data['meta_data'] = [
             {
                 'key': 'fifu_list_url',
                 'value': x['images_list']
             }
         ]
-
+        
         data_list.append(data)
 
     return data_list
@@ -285,8 +292,11 @@ def test_categories(canvas: Canvas) -> None:
 
 
 def button_3_func():
-    global function
-    function = merge_products_info()
+    global products
+    products = merge_products_info()
+    tk.showinfo(
+            "Success!", f"Đã import {len(products)} sản phẩm")
+    print(f"Đã import {len(products)} sản phẩm")
 
 
 if __name__ == '__main__':
@@ -552,6 +562,7 @@ if __name__ == '__main__':
         borderwidth=0,
         highlightthickness=0,
         command=lambda: upload_product(
+            window,
             entry_terminal,
             get_Entry(entry_domain),
             get_cookies_list(entry_cookies),
