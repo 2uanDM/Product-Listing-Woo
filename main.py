@@ -1,5 +1,5 @@
 from pathlib import Path
-from tkinter import Tk, Canvas, Entry, Text, Button, PhotoImage, END, Scrollbar
+from tkinter import Tk, Canvas, Entry, Text, Button, PhotoImage, Scrollbar, Radiobutton, IntVar
 import tkinter.messagebox as tk
 from utils.woo_api import upload_product
 from utils.woo_csv import export_csv, merge_products_info
@@ -9,6 +9,7 @@ import threading
 
 # Globol variable
 products = []
+upload_images_option = 0
 
 if sys.stdout is None:
     sys.stdout = open(os.devnull, 'w')
@@ -75,6 +76,7 @@ def get_Text(textbox: Text) -> str:
 def get_Entry(textbox: Entry) -> str:
     return textbox.get().strip()
 
+
 def regular_data_format(price: str, description: str, categories: str, tags: str) -> dict:
     data = {
         "type": "simple",
@@ -84,23 +86,31 @@ def regular_data_format(price: str, description: str, categories: str, tags: str
         "featured": False,
         "catalog_visibility": "visible",
         "short_description": "",
-        "description": '',
+        "description": description,
         "tax_status": "taxable",
         "stock_status": "instock",
         "backorders": "no",
         "sold_individually": False,
-        "regular_price": '',
+        "regular_price": price,
         "categories": [],
         "tags": [], 
-        "meta_data": [],       
+        "meta_data": [],    
+        "images" : [],  
     }
+    
     
     # Get the categories
     cat_list = []
     for category in categories.split(','):
-        cat_list.append(
-            {"name": category}
-        )
+        if category.find('>') != -1: # Existing hierachy category
+            category = '|'.join(list(map(lambda x: x.strip(), category.split('>'))))
+            cat_list.append(
+                {"id": category}
+            )
+        else:
+            cat_list.append(
+                {"id": category}
+            )
 
     data["categories"] = cat_list
 
@@ -117,18 +127,23 @@ def regular_data_format(price: str, description: str, categories: str, tags: str
 
 
 def get_product_data(price: str, description: str, categories: str, tags: str) -> list:
-    global products
+    global products, upload_images_option
     data_list = []
     for x in products:
         data = regular_data_format(price, description, categories, tags)
         data['sku'] = x['sku']
         data['name'] = x['name']
-        data['meta_data'] = [
-            {
-                'key': 'fifu_list_url',
-                'value': x['images_list']
-            }
-        ]
+        if upload_images_option == 1:
+            img_urls = x['images_list'].split('|')
+            for url in img_urls:
+                data['images'].append({'src':url})
+        else:
+            data['meta_data'] = [
+                {
+                    'key': 'fifu_list_url',
+                    'value': x['images_list']
+                }
+            ]
         
         data_list.append(data)
 
@@ -285,14 +300,14 @@ def test_categories(canvas: Canvas) -> None:
         345.0,
         467.0,
         anchor="nw",
-        text="Categories (Cách nhau bởi dấu phẩy) ",
+        text='Categories ID nếu "Upload", Categories nếu "CSV"',
         fill="#000000",
         font=("RobotoRoman SemiBold", 16 * -1)
     )
 
 
 def button_3_func():
-    global products
+    global products, upload_images_option
     products = merge_products_info()
     tk.showinfo(
             "Success!", f"Đã import {len(products)} sản phẩm")
@@ -341,45 +356,75 @@ if __name__ == '__main__':
         462.0,
         43.0,
         anchor="nw",
-        text="Mode: ",
+        text="Mode Upload: ",
         fill="#000000",
         font=("RobotoRoman SemiBold", 18 * -1)
     )
 
     canvas.create_text(
-        598.0,
+        621.0,
         43.0,
         anchor="nw",
-        text="Basic",
+        text="Server",
         fill="#000000",
         font=("RobotoRoman SemiBold", 18 * -1)
     )
 
-    canvas.create_rectangle(
-        561.0,
-        43.0,
-        582.0,
-        64.0,
-        fill="#D9D9D9",
-        outline="")
+    # canvas.create_rectangle(
+    #     591.0,
+    #     43.0,
+    #     612.0,
+    #     64.0,
+    #     fill="#D9D9D9",
+    #     outline="")
 
     canvas.create_text(
         721.0,
         43.0,
         anchor="nw",
-        text="Advance",
+        text="Dùng link ảnh bên ngoài",
         fill="#000000",
         font=("RobotoRoman SemiBold", 18 * -1)
     )
 
-    canvas.create_rectangle(
-        684.0,
-        43.0,
-        705.0,
-        64.0,
-        fill="#D9D9D9",
-        outline="")
+    # canvas.create_rectangle(
+    #     684.0,
+    #     43.0,
+    #     705.0,
+    #     64.0,
+    #     fill="#D9D9D9",
+    #     outline="")
+    
+    '''
+        Check Box Field
+    '''
+    upload_status = IntVar()
 
+    def on_radiobutton_change():
+        global upload_images_option
+        if upload_status.get() == 1:
+            upload_images_option = 1 
+        elif upload_status.get() == 2:
+            upload_images_option = 2
+        print("Bạn đã chọn upload ảnh lên server" if upload_images_option == 1 else 
+              "Bạn đã chọn sử dụng link ảnh bên ngoài")
+        window.update()
+    
+    # Button 1: Upload to Server 
+    radio_button_1 = Radiobutton(
+        window, text='', variable=upload_status, value=1, command=on_radiobutton_change, border=False
+    )
+    radio_button_1_window = canvas.create_window(
+        591, 43, anchor="nw", window=radio_button_1
+    )
+    # Button 2: Use fifu list url
+    radio_button_2 = Radiobutton(
+        window, text='', variable=upload_status, value=2, command=on_radiobutton_change, border=False
+    )
+    radio_button_2_window = canvas.create_window(
+        684, 43, anchor="nw", window=radio_button_2
+    )
+    
     '''
         Text Box Field
     '''
@@ -451,28 +496,6 @@ if __name__ == '__main__':
         height=32.0
     )
 
-    # SKU
-    entry_image_4 = PhotoImage(
-        file=relative_to_assets("entry_4.png"))
-    entry_bg_4 = canvas.create_image(
-        466.5,
-        164.0,
-        image=entry_image_4
-    )
-    entry_sku = Entry(
-        bd=0,
-        bg="#FFFFFF",
-        fg="#000716",
-        highlightthickness=2,
-        font=("Inter Regular", 16 * -1)
-    )
-    entry_sku.place(
-        x=346.0,
-        y=147.0,
-        width=241.0,
-        height=32.0
-    )
-
     # Price
     entry_image_4 = PhotoImage(
         file=relative_to_assets("entry_4.png"))
@@ -488,7 +511,7 @@ if __name__ == '__main__':
         highlightthickness=2,
         font=("Inter Regular", 16 * -1)
     )
-    entry_sku.place(
+    entry_price.place(
         x=346.0,
         y=147.0,
         width=241.0,
@@ -571,7 +594,8 @@ if __name__ == '__main__':
                 description=get_Text(entry_description),
                 categories=get_Entry(entry_categories),
                 tags=get_Entry(entry_tags)
-            )
+            ),
+            upload_option=upload_images_option
         ),
         relief="flat"
     )
@@ -591,12 +615,15 @@ if __name__ == '__main__':
         borderwidth=0,
         highlightthickness=0,
         command=lambda: export_csv(
-            get_product_data(
+            data_list=get_product_data(
                 price=get_Entry(entry_price),
                 description=get_Text(entry_description),
                 categories=get_Entry(entry_categories),
                 tags=get_Entry(entry_tags)
-            )
+            ), 
+            categories=get_Entry(entry_categories),
+            tags=get_Entry(entry_tags),
+            upload_option=upload_images_option
         ),
         relief="flat"
     )

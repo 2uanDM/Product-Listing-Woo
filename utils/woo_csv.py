@@ -4,10 +4,20 @@ import random
 import tkinter.messagebox as tk
 
 
-def export_csv(data_list: list):
+def export_csv(data_list: list, categories: str, tags: str, upload_option: int):
     df = pd.read_csv('./assets/template_woo.csv')
 
     row_to_append = df.iloc[0]
+    
+    if len(data_list) == 0:
+        tk.showerror(
+            title="Empty products!", message="Bạn chưa chọn sản phẩm")
+        return
+    
+    if upload_option == 0:
+        tk.showerror(
+            title="Upload option!", message="Bạn chưa chọn upload option")
+        return
 
     for data in data_list:
         length = len(df)
@@ -19,13 +29,14 @@ def export_csv(data_list: list):
         df.at[length, 'Description'] = data['description']
         df.at[length, 'Regular price'] = data['regular_price']
 
-        if 'categories' in data:
-            cat_list = [x['name'] for x in data['categories']]
-            df.at[length, 'Categories'] = ','.join(cat_list)
-        if 'tags' in data:
-            tags_list = [x['name'] for x in data['tags']]
-            df.at[length, 'Tags'] = ','.join(tags_list)
-        if 'meta_data' in data:
+        df.at[length, 'Categories'] = categories
+        df.at[length, 'Tags'] = tags
+
+        if upload_option == 1:
+            urls = [x['src'] for x in data['images']]
+            df.at[length, 'Images'] = ','.join(urls)
+            df.at[length, 'Meta: fifu_list_url'] = ''
+        else:
             df.at[length, 'Meta: fifu_list_url'] = data['meta_data'][0]['value']
 
     # Delete the first row and reset index
@@ -78,9 +89,7 @@ def merge_products_info() -> list:
         for url in product_list[2:]:
             if isinstance(url, str) and url != 'nan':
                 tmp_lst.append(url)
-
         product_dict['images_list'] = '|'.join(tmp_lst)
-
         products_out.append(product_dict)
 
     return products_out

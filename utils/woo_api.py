@@ -193,7 +193,7 @@ def check_input_format(input_string):
     else:
         return False
 
-def upload_product(window: Tk, text: Text, domain: str, cookies: list, data_list: list) -> None:
+def upload_product(window: Tk, text: Text, domain: str, cookies: list, data_list: list, upload_option: int) -> None:
     if domain == '':
         tk.showerror(
             title="Empty Domain!", message="Không được để trống domain")
@@ -207,6 +207,16 @@ def upload_product(window: Tk, text: Text, domain: str, cookies: list, data_list
     if cookies == '':
         tk.showerror(
             title="Empty Cookies!", message="Không được để trống cookies")
+        return
+    
+    if len(data_list) == 0:
+        tk.showerror(
+            title="Empty products!", message="Bạn chưa chọn sản phẩm")
+        return
+    
+    if upload_option == 0:
+        tk.showerror(
+            title="Upload option!", message="Bạn chưa chọn upload option")
         return
     
     wcapi_key = APIKey(
